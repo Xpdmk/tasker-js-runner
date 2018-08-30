@@ -1,16 +1,28 @@
+import tasker from './tasker'
+
+export type ProfileHandlerType = {
+  enter: Function,
+  exit: Function
+}
+
+type RoutesType = { [string]: () => ProfileHandlerType }
+type TaskerType = typeof tasker
 export default class Router {
-  constructor(routes, context) {
+  routes: RoutesType
+  context: TaskerType
+
+  constructor(routes: RoutesType, context: TaskerType) {
     this.context = context;
     this.routes = routes;
     if (!this.routes.ui) {
-      this.routes.ui = {
+      this.routes.ui = () => ({
         enter() {},
         exit() {},
-      };
+      });
     }
   }
 
-  dispatch(locals) {
+  dispatch(locals: Object) {
     return Promise.resolve()
       .then(() => {
         // Make route
@@ -22,7 +34,7 @@ export default class Router {
         };
 
         // Go to route
-        const route = this.routes[caller.route] || this.routes.ui;
+        const route = (this.routes[caller.route] || this.routes.ui)();
         return route[caller.type](locals, this.context);
       });
   }

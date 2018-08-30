@@ -1,12 +1,33 @@
-/* global local_keys */
+import fakeTasker from './fakeTasker'
 
-var tasker = window;
-window.tasker = tasker;
+export type EnhancedTaskerType = typeof fakeTasker & {
+  // Custom props
+  inspect: (target: mixed) => string,
+  console: {
+    log: (...args: Array<mixed>) => void
+  },
+  getParams: () => Array<TaskParameterType>,
+  locals: {[string]: TaskParameterType},
+  tasker: EnhancedTaskerType
+}
+
+export type TaskParameterType =
+  | ?string
+  | number
+  | boolean
+  | {[string]: TaskParameterType}
+
+declare var window: EnhancedTaskerType
+declare var global: EnhancedTaskerType
+
+const tasker: EnhancedTaskerType = window || fakeTasker
+
+global.tasker = tasker;
 
 // Injecting development functions
-tasker.inspect = (target) => {
-  const cache = [];
-  return JSON.stringify(target, function(key, value) {
+tasker.inspect = target => {
+  const cache: Array<mixed> = [];
+  return JSON.stringify(target, function(key: string, value: TaskParameterType) {
     if (typeof value === 'object' && value !== null) {
       if (cache.indexOf(value) !== -1) {
         // Circular reference found, discard key
@@ -17,12 +38,13 @@ tasker.inspect = (target) => {
     }
     return value;
   });
-};
+}
+
 tasker.console = {
-  log(...params) {
+  log: (...params: Array<mixed>) => {
     tasker.flash(
       params
-        .map(param => (typeof param === 'string') ? param : tasker.inspect(param))
+        .map(param=> (typeof param === 'string') ? param : tasker.inspect(param))
         .join(' ')
     );
   },
@@ -32,13 +54,12 @@ tasker.getParams = () => {
   return [
     tasker.local('par1'),
     tasker.local('par2'),
-  ]
-    .map((rawParam) => {
+  ].map((rawParam: string)=> {
       // Test if param is a json
-      let parsedParam;
+      let parsedParam: ?TaskParameterType
       try {
         parsedParam = JSON.parse(rawParam); // will fail if param is not a JSON
-      } catch (err) {
+      } catch {
         parsedParam = rawParam;
       }
       return parsedParam === 'undefined' ? undefined : parsedParam;
@@ -46,11 +67,14 @@ tasker.getParams = () => {
 };
 
 // Attempt to restore param from upstream
-const localsJson = tasker.getParams()[0];
+let par1: TaskParameterType = tasker.getParams()[0];
+if (par1 !== undefined && typeof par1 !== 'object') par1 = { par1 }
 
-tasker.locals = localsJson || local_keys
-  .reduce((acc, key) => {
-    const keyName = key.slice(1);
+declare var local_keys: Array<string>
+
+tasker.locals = par1 || local_keys
+  .reduce((acc: Object, key: string) => {
+    const keyName: string = key.slice(1);
     acc[keyName] = tasker.local(keyName);
     return acc;
   }, {});

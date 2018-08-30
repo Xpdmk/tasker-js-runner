@@ -1,7 +1,8 @@
-import tasker from './tasker';
-import Router from './router';
+import tasker from './tasker'
+import Router from './router'
+import type { ProfileHandlerType } from './router'
 
-const hotReload = () => {
+const hotReload = (): Promise<void> => {
   const environment = tasker.global('TJS_ENV');
 
   if (environment !== 'development') return Promise.resolve();
@@ -23,11 +24,12 @@ const hotReload = () => {
       }
 
     })
-    .catch(err => tasker.flash(err.message));
+    .catch((err: Error) => tasker.flash(err.message));
 };
 
 export default class TaskerJS {
-  constructor(routes) {
+  router: Router
+  constructor(routes: { [string]: () => ProfileHandlerType }) {
     this.router = new Router(routes, tasker);
 
     hotReload()
